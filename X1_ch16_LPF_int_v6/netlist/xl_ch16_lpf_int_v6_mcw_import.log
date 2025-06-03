@@ -1,0 +1,12 @@
+INFO:HDLCompiler:1061 - Parsing VHDL file
+   "C:/NetDAS/X1_ch16_LPF_int_v4/netlist/xl_ch16_lpf_int_v6_mcw.vhd" into
+   library work
+INFO:ProjectMgmt:656 - Parsing design hierarchy completed successfully.
+INFO:HDLCompiler:1061 - Parsing VHDL file
+   "C:/NetDAS/X1_ch16_LPF_int_v4/netlist/xl_ch16_lpf_int_v6.vhd" into library
+   work
+INFO:ProjectMgmt:656 - Parsing design hierarchy completed successfully.
+INFO:TclTasksC:2116 - The automatic calculation of top has been turned-off.
+   Please set the new top explicitly by running the "project set top" command.
+   To re-calculate the new top automatically, set the "Auto Implementation Top"
+   property to true.

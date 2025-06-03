@@ -1,0 +1,1 @@
+C:/Xilinx/12.2/ISE_DS/ISE/sysgen/bin/nt/saferun.exe -a C:/NetDAS/X1_ch16_LPF_int_v4/netlist/xl_ch16_lpf_int_v6_mcw_import.log -- c:/xilinx/12.2/ise_ds/ise//bin/nt/xtclsh.exe xl_ch16_lpf_int_v6_mcw_import.tcl

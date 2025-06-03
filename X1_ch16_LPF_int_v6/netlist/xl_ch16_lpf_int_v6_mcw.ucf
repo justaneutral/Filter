@@ -1,0 +1,5 @@
+
+
+# Period constraint for clk_1
+NET "clk_1" TNM_NET = "clk_1_78e9eb03";
+TIMESPEC "TS_clk_1_78e9eb03" = PERIOD "clk_1_78e9eb03" 20.0 ns HIGH 50 %;

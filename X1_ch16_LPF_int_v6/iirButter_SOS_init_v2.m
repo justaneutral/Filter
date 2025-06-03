@@ -1,0 +1,398 @@
+% Butterworth LPF model initialization
+% Ivan Goranov, 04Apr2011
+
+%h = fdesign.lowpass(); % constructs a lowpass filter object h
+% Some valid specs:
+%   'fp,fst,ap,ast'     -- default spec
+%   'n,fp,fst,ap'       -- ap = passband ripple, dB
+%   'n,fp,fst,ast'      -- ast = stopband attenuation, dB
+%   'n,f3db'            -- n = filter order; f3db==fc = cutoff frequency
+
+Fc_min = 10;                            % min cutoff frequency, Hz
+Fc_max = 30e3;                          % max cutoff frequency, Hz
+nFc = 16;                               % num of cutoff frequencies
+rFc = (Fc_max/Fc_min)^(1/(nFc - 1));    % common ratio of the geometric progr.
+% rFc = 1.041 @ nFc = 200, Fc_max/Fc_min = 30e3/10
+
+if 0
+  i16 = [1:16];
+  Fc16 = Fc_min*(Fc_max/Fc_min).^((i16 - 1)/15);
+  [i16' Fc16']
+end
+
+Fc_mid = Fc_min*rFc^(nFc/2);
+
+Fc = Fc_min;            % cutoff (-3dB) freq, Hz
+Fp = 0.6*Fc;            % passband edge freq, Hz
+Fst = 2.5*Fc;           % stopband edge freq, Hz
+Ap = 0.5;               % passband ripple, dB
+Ast = 40;               % stopband attenuation, dB
+%Fadc = 100e6/128;       %=== ADC sampling freq, Hz ===
+Fadc = 50e6/128;        %=== ADC sampling freq, Hz ===
+Fsa = Fadc/1;           % LPF sampling freq, Hz
+%Fsa = 6*30e3;           % LPF sampling freq, Hz
+buttOrd = 6;            % filter order
+
+%h = fdesign.lowpass('fp,fst,ap,ast',Fp,Fst,Ap,Ast,Fsa);
+h = fdesign.lowpass('n,f3db',buttOrd,Fc,Fsa);
+Hd = design(h,'butter');
+%fvtool(Hd, 'fs', Fsa);
+
+% Anti-aliasing filter:
+%{
+aaOrd = 2;
+haa = fdesign.lowpass('n,f3db',aaOrd,Fc_max,Fsa*2);
+Hdaa = design(haa,'butter');
+fvtool(Hdaa, 'fs', Fsa*2);
+%}
+
+format long g;
+%(Hd.ScaleValues - [0 0 0 1]')*2^32                 % ufract 1.32 format
+%(Hd.sosMatrix(:,5:6) + [2 -1; 2 -1; 2 -1])*2^30    % sfract 2.30 format
+
+g = Hd.ScaleValues;
+a2 = Hd.sosMatrix(:,5);
+a3 = Hd.sosMatrix(:,6);
+
+% Fixed-point coefficients
+Sg = 2^34;
+Sa = 2^34;
+g = round(g*Sg)/Sg;
+a2 = round(a2*Sa)/Sa;
+a3 = round(a3*Sa)/Sa;
+
+% Results rounding:
+Srm = Sg*2^0;           % rounding of x results
+Sra = Sg*2^0;           % rounding of + results
+
+% Simulation params
+Fsig = Fc*0.6;
+%Fsig = Fc_max;
+Fsim = 1*Fsa;
+dt = 1/Fsim;
+
+% Coefficient arrays ga, a2a, a3a for all nFc filters
+ga = zeros(nFc, length(Hd.ScaleValues));        % allocate mem: 1 row/filter
+a2a = zeros(nFc, length(Hd.sosMatrix(:,5)));
+a3a = zeros(nFc, length(Hd.sosMatrix(:,6)));
+for idx = 1:nFc
+  Fci = Fc_min*rFc^(idx-1);
+  hi = fdesign.lowpass('n,f3db',buttOrd,Fci,Fsa);
+  Hdi = design(hi,'butter');
+  ga(idx,:) = Hdi.ScaleValues';                 % 1 row/filter
+  a2a(idx,:) = Hdi.sosMatrix(:,5)';
+  a3a(idx,:) = Hdi.sosMatrix(:,6)';
+end
+
+% ver2 coefficients
+if 0    % different cut-off frequencies
+  g_16x4x = [ga(1,:) ga(2,:) ga(3,:) ga(4,:) ga(5,:) ga(6,:) ga(7,:) ga(8,:) ...
+        ga(9,:) ga(10,:) ga(11,:) ga(12,:) ga(13,:) ga(14,:) ga(15,:) ga(16,:)];
+  a2_16x4x = [a2a(1,:) 0 a2a(2,:) 0 a2a(3,:) 0 a2a(4,:) 0 a2a(5,:) 0 ...
+              a2a(6,:) 0 a2a(7,:) 0 a2a(8,:) 0 a2a(9,:) 0 a2a(10,:) 0 ...
+              a2a(11,:) 0 a2a(12,:) 0 a2a(13,:) 0 a2a(14,:) 0 a2a(15,:) 0 ...
+              a2a(16,:) 0];
+  a3_16x4x = [a3a(1,:) 0 a3a(2,:) 0 a3a(3,:) 0 a3a(4,:) 0 a3a(5,:) 0 ...
+              a3a(6,:) 0 a3a(7,:) 0 a3a(8,:) 0 a3a(9,:) 0 a3a(10,:) 0 ...
+              a3a(11,:) 0 a3a(12,:) 0 a3a(13,:) 0 a3a(14,:) 0 a3a(15,:) 0 ...
+              a3a(16,:) 0];
+elseif 1    % same cut-off freqs
+  g_16x4x = repmat(ga(13,:), 1,16);
+  a2_16x4x = repmat([a2a(13,:) 0], 1,16);
+  a3_16x4x = repmat([a3a(13,:) 0], 1,16);
+else        % same cut-off freqs
+  g_16x4x = [ga(13,:) ga(13,:) ga(13,:) ga(13,:) ga(13,:) ga(13,:) ga(13,:) ...
+             ga(13,:) ga(13,:) ga(13,:) ga(13,:) ga(13,:) ga(13,:) ga(13,:) ...
+             ga(13,:) ga(13,:)];
+  a2_16x4x = [a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 ...
+              a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 ...
+              a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 a2a(13,:) 0 ...
+              a2a(13,:) 0];
+  a3_16x4x = [a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 ...
+              a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 ...
+              a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 a3a(13,:) 0 ...
+              a3a(13,:) 0];
+end
+
+% max gain error without ga(:,4)
+max_gain_err = max(abs(1 - ga(:,4)));
+% remove ga(:,4)
+%ga = ga(:,1:3);
+
+%{
+Filter coefficients:
+---------------------------------
+@Fsa = 100e6/128/4 = 195312.5 Hz:
+
+@Fc = 5 Hz:
+
+Hd.ScaleValues =                                        % ufract 1.32 format
+     6.46713910201768e-009
+     6.46787468028265e-009
+     6.46740838661231e-009
+     0.999999994827387
+
+Hd.sosMatrix(:,5:6) =                                   % sfract 2.30 format
+         -1.99968928494704         0.999689310815593
+         -1.99991671574429         0.999916741615786
+         -1.99977252439455         0.99977255026418
+
+@Fc = 5*rFc Hz:
+
+Hd.ScaleValues =
+     6.75536498961904e-009
+     6.75615025036436e-009
+     6.75565242636011e-009
+     0.999999992599247
+
+Hd.sosMatrix(:,5:6) =
+         -1.9996824364456          0.99968246346706
+         -1.99991487942771         0.999914906452312
+         -1.99976751021263         0.999767537235238
+
+@Fc = 30e3 Hz:
+
+Hd.ScaleValues =
+     0.120022589808303
+     0.153765037082321
+     0.157238351244933
+     1
+
+Hd.sosMatrix(:,5:6) =
+        -0.634679817001119         0.114770176234329
+        -0.938898529848166         0.649108812897933
+        -0.720080098442742         0.264769725996239
+
+---------------------------------
+@Fsa = 100e6/128/2 = 390625 Hz:
+
+@Fc = 5 Hz:
+
+Hd.ScaleValues =                                        % ufract 1.34 format
+     1.61691032785072e-009
+     1.61700230982831e-009
+     1.61694413414182e-009
+     0.99999997504635
+
+Hd.sosMatrix(:,5:6) =                                   % sfract 2.32 format
+         -1.99984463687274         0.999844643340386
+         -1.99995836347324         0.999958369941246
+         -1.99988626219691         0.999886268664682
+
+@Fc = 5*rFc Hz:
+
+Hd.ScaleValues =
+     1.68897534846835e-009
+     1.68907343667257e-009
+     1.68901120867204e-009
+     1.00000005153401
+
+Hd.sosMatrix(:,5:6) =
+         -1.99984121237241         0.999841219128312
+         -1.99995744556459         0.999957452320879
+         -1.99988375510592         0.999883761861966
+
+@Fc = 30e3 Hz:
+
+Hd.ScaleValues =
+     0.0394223057535554
+     0.0441419610838783
+     0.0496374043381988
+     1
+
+Hd.sosMatrix(:,5:6) =
+         -1.2233101553888          0.380999378403017
+         -1.58166877442144         0.78555175455178
+         -1.33393376011079         0.505882776684966
+
+---------------------------------
+@Fsa = 100e6/128 = 781250 Hz:
+
+@Fc = 5 Hz:
+
+Hd.ScaleValues =                                        % ufract 1.36 format
+     4.04243305496266e-010
+     4.04254796304571e-010
+     4.04247524343759e-010
+         0.999999898268421
+
+Hd.sosMatrix(:,5:6) =                                   % sfract 2.34 format
+         -1.99992231703608         0.999922318653052
+         -1.99997918313695         0.999979184753971
+         -1.99994313109841         0.999943132715397
+
+@Fc = 5*rFc Hz:
+
+Hd.ScaleValues =
+     4.22260559851395e-010
+     4.22272883326968e-010
+     4.22265111765796e-010
+         0.999999976416256
+
+Hd.sosMatrix(:,5:6) =
+          -1.9999206047235         0.999920606412544
+         -1.99997872424504         0.999978725934131
+         -1.99994187755291         0.999941879241972
+
+@Fc = 30e3 Hz:
+
+Hd.ScaleValues =
+        0.0117670443832886
+        0.011812046571769
+        0.0143062332063559
+        0.999999999999994
+
+Hd.sosMatrix(:,5:6) =
+         -1.57789313435844         0.624961311891597
+         -1.82896141109709         0.883518895710145
+         -1.66136974857056         0.710928013684455
+
+===================================
+Simulation results:
+
+With buttOrd = 6 and Fsa = 4*Fc:
+  achieved Ap = 0.001 dB @ Fp
+  achieved Ast = 45.5 dB @ 1.5*Fc
+  achieved GroupDelay = 1.93 .. 2.73 samples @ 0..Fp
+
+With buttOrd = 6 and Fsa = 6*Fc:
+  achieved Ap = 0.005 dB @ Fp
+  achieved Ast = 45.2 dB @ 1.8*Fc
+  achieved GroupDelay = 3.35 .. 4.28 samples @ 0..Fp
+
+With buttOrd = 6 and Fsa = 13*Fc:
+  achieved Ap = 0.008 dB @ Fp
+  achieved Ast = 45.3 dB @ 2.2*Fc
+  achieved GroupDelay = 7.84 .. 9.46 samples @ 0..Fp
+@ Fsa = 390625 Hz: GrpDly = 0.020 .. 0.024 ms
+
+With buttOrd = 6 and Fsa = 64*Fc:
+  achieved Ap = 0.01 dB @ Fp
+  achieved Ast = 44.7 dB @ 2.35*Fc
+  achieved GroupDelay = 39..47 samples @ 0..Fp
+@ Fsa = 390625 Hz: GrpDly = 0.1 .. 0.12 ms
+
+With buttOrd = 6 and Fsa = 1024*Fc:
+  achieved Ap = 0.01 dB @ Fp
+  achieved Ast = 44.5 dB @ 2.35*Fc
+  achieved GroupDelay =  = 630..748 samples @ 0..Fp
+@ Fsa = 390625 Hz: GrpDly = 1.6 .. 1.9 ms
+
+With buttOrd = 6 and Fsa = 24000*Fc:
+  achieved Ap = 0.01 dB @ Fp
+  achieved Ast = 44.5 dB @ 2.35*Fc
+  achieved GroupDelay = 14800..17500 samples @ 0..Fp
+@ Fsa = 390625 Hz: GrpDly = 38 .. 45 ms
+
+With buttOrd = 6 and Fsa = 156250*Fc:
+  achieved Ap = 0.01 dB @ Fp
+  achieved Ast = 44.5 dB @ 2.35*Fc
+
+CIC Interpolation filter:
+  upsampling factor = 128 (256)
+  achieved Ap = 0.1 (0.25) dB @ 30 kHz
+  achieved Ast = 84 (65) dB
+  achieved GroupDelay = 190.5 (382.5) samples
+@ 128(256)*Fsa = 100 MHz: GrpDly = 1.9 (3.8) us
+
+======================================
+Output signal error:
+---------------------------------------------
+@Fsa = 100e6/128/4 = 195312.5 Hz
+---------+-----------+-----------+-----------
+@Fc= [Hz]|     5     |   391.5   |    30e3
+@Fsig =  |.6Fc |.06Fc|.6Fc |.06Fc|.6Fc |.06Fc
+---------+-----+-----+-----+-----+-----+-----
+@Sg=2^32 |.024 |.024 |<1e-6|<1e-6|  -  |  -
+@Sg=2^31 |.024 |.024 |  -  |  -  |  -  |  -
+@Sg=2^30 |.024 |.024 |  -  |  -  |  -  |  -
+@Sg=2^29 |.355 |.355 |<2e-5|<2e-5|<1e-9|<1e-9
+---------+-----+-----+-----+-----+-----+-----
+@Sa=2^31 |.0093|.012 |<3e-6|<3e-6|  -  |  -
+@Sa=2^30 |.024 |.024 |  -  |  -  |  -  |  -
+@Sa=2^29 |.024 |.024 |  -  |  -  |  -  |  -
+@Sa=2^28 |.22  |.14  |<6e-6| 6e-6|<3e-9|<1e-9
+---------+-----+-----+-----+-----+-----+-----
+@Sg=2^32,|     |     |  -  |  -  |  -  |  -
+ Sa=2^31 |.025 |.037 |  -  |  -  |  -  |  -
+---------+-----+-----+-----+-----+-----+-----
+@Sg=2^31,|     |     |  -  |  -  |  -  |  -
+ Sa=2^30 |.017 |.0018|  -  |  -  |  -  |  -
+---------+-----+-----+-----+-----+-----+-----
+@Sg=2^30,|     |     |  -  |  -  |  -  |  -
+ Sa=2^29 |.017 |.0018|  -  |  -  |  -  |  -
+---------+-----+-----+-----+-----+-----+-----
+@Sg=2^29,|     |     |  -  |  -  |  -  |  -
+ Sa=2^28 |.244 |.265 |  -  |  -  |  -  |  -
+---------+-----+-----+-----+-----+-----+-----
+
+----------------------------------
+@Fsa = 100e6/128/2 = 390625 Hz
+---------+-----------------------+
+@Fc= [Hz]|           5           |
+@Fsig =  |.6Fc |.06Fc|    + DC   |
+---------+-----+-----+-----+-----+
+@Sg=2^34,|     |     |     |     |
+ Sa=2^34 |.022 |.018 |.031 |.027 |
+---------+-----+-----+-----+-----+
+@Sg=2^34,|     |     |
+ Sa=2^33 |.025 |.037 |
+---------+-----+-----+
+@Sg=2^34,|     |     |
+ Sa=2^32 |.017 |.0018|
+---------+-----+-----+
+@Sg=2^33,|     |     |
+ Sa=2^33 |.025 |.037 |
+---------+-----+-----+
+@Sg=2^33,|     |     |
+ Sa=2^32 |.017 |.0018|
+---------+-----+-----+
+@Sg=2^32,|     |     |
+ Sa=2^31 |.017 |.0018|
+---------+-----+-----+
+@Sg=2^31,|     |     |
+ Sa=2^30 |.366 |.37  |
+---------+-----+-----+
+
+----------------------------------------------------------
+@Fsa = 100e6/128/2 = 390625 Hz
+---------+-----------+-----------+-----------+-----------+
+@Fc= [Hz]|           5           |         391.5         |
+@Fsig =  |.6Fc |.06Fc|    + DC   |.6Fc |.06Fc|    + DC   |
+---------+-----+-----+-----+-----+-----+-----+-----+-----+
+@Srm=2^44|     |     |     |     |     |     |     |     |
+ Sra=2^42|<7e-5|<2e-4| 7e-5|<2e-4|<2e-8|<2e-8|<2e-8|<2e-8|
+---------+-----+-----+-----+-----+-----+-----+-----+-----+
+@Srm=2^42|     |     |     |     |     |     |     |     |
+ Sra=2^40|<3e-4|     |     |     |     |     |     |     |
+---------+-----+-----+-----+-----+-----+-----+-----+-----+
+@Srm=2^40|     |     |     |     |     |     |     |     |
+ Sra=2^38|.001 |     |     |     |     |     |     |     |
+---------+-----+-----+-----+-----+-----+-----+-----+-----+
+@Srm=2^38|     |     |     |     |     |     |     |     |
+ Sra=2^36|     |     |     |     |     |     |     |     |
+---------+-----+-----+-----+-----+-----+-----+-----+-----+
+@Srm=2^36|     |     |     |     |     |     |     |     |
+ Sra=2^34|.016 |.045 |.018 |.046 |<4e-6|<4e-6|<4e-6|<4e-6|
+---------+-----+-----+-----+-----+-----+-----+-----+-----+
+
+----------------------------------------------------------------------
+@Fsa = 100e6/128/2 = 390625 Hz
+---------+-----------------------------+-----------+-----------------+
+@Fc= [Hz]|           5                 |         391.5               |
+@Fsig =  |.6Fc |.06Fc|    + DC   |= DC |.6Fc |.06Fc|    + DC   |= DC |
+---------+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+@Sg=2^34,|     |     |     |     |     |     |     |     |     |     |
+ Sa=2^34,|     |     |     |     |<5e-3|     |     |     |     |     |
+ Srm=2^38|     |     |     |     |  to |     |     |     |     |     |
+ Sra=2^34|.02  |.062 |<.031|<.071|<.063|<2e-6|<3e-6|<2e-6| 3e-6|<4e-6|
+---------+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+@Sg=2^34,|     |     |     |     |     |     |     |     |     |     |
+ Sa=2^34,|     |     |     |     |     |     |     |     |     |<4e-6|
+ Srm=2^34|     |     |     |     |     |     |     |     |     |  to |
+ Sra=2^34|.02  |.027 |.027 |<.038| 1e-6|<2e-6|<2e-6|<2e-6|<2e-6| 8e-6|
+---------+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+
+%}
+
+%[FFc GG AA2 AA3] = Fc2Coeff(Fsa, 'NVC2916CutoffFreqs.txt', 'FcCoeff.txt');

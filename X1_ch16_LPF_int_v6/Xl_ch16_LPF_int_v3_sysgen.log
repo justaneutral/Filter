@@ -1,0 +1,21 @@
+------------------------------ DCM Clock Outputs -------------------------------
+Normalized Period    Clock Name    Clock Frequency
+--------------------------------------------------------------------------------
+                1         clk_1            50.0000
+--------------------------------------------------
+-------------------------------------- ** --------------------------------------
+--------------------------------- Version Log ----------------------------------
+Version                                 Path
+System Generator 12.2                   C:/Xilinx/12.2/ISE_DS/ISE/sysgen
+Matlab 7.10.0.499 (R2010a)              C:/MATLAB/R2010a
+ISE                                     C:/Xilinx/12.2/ISE_DS/ISE
+------------------ Sysgen Generator Compilation Profile -------------------
+Simulink: Outside System Generator                          1850       (ms)
+Sysgen: Inside System Generator                             328582     (ms)
+Total                                                       330432     (ms)
+----------------------------------- ** ------------------------------------
+------------------- Sysgen Generator Simulation Profile -------------------
+Simulink: Outside System Generator                          25         (ms)
+Sysgen: Inside System Generator                             2991       (ms)
+Total                                                       3016       (ms)
+----------------------------------- ** ------------------------------------

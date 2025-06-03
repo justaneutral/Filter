@@ -1,0 +1,6 @@
+;(C) Dourbal Electric. 2012.
+;file: coefcalc_dll\DLL\coefcalcdll.DEF
+LIBRARY	"COEFCALCDLL"
+EXPORTS
+	coefcalc @1
+

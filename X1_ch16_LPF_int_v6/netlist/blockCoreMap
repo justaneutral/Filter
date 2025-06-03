@@ -1,0 +1,6 @@
+{
+  'addsub' => 'SELECT Adder_Subtracter spartan6 Xilinx,_Inc. 11.0',
+  'counter' => 'SELECT Binary_Counter spartan6 Xilinx,_Inc. 11.0',
+  'mult' => 'SELECT Multiplier spartan6 Xilinx,_Inc. 11.2',
+  'sprom' => 'SELECT Block_Memory_Generator spartan6 Xilinx,_Inc. 4.1'
+}

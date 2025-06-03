@@ -1,0 +1,58 @@
+--------------------------------- Version Log ----------------------------------
+Version                                 Path
+System Generator 12.2                   C:/Xilinx/12.2/ISE_DS/ISE/sysgen
+Matlab 7.10.0.499 (R2010a)              C:/Program Files/MATLAB/R2010a
+ISE                                     C:/Xilinx/12.2/ISE_DS/ISE
+--------------------------------------------------------------------------------
+Summary of Errors:
+Error 0001: Incorrect rate
+     Block: 'Xl_ch16_LPF_int_v4/ch_16_LPF/ch_16_IIR_filter/Demux_16x/Reg9'
+Error 0002: Incorrect rate
+     Block: 'Xl_ch16_LPF_int_v4/ch_16_LPF/ch_16_IIR_filter/Demux_16x/Reg9'
+--------------------------------------------------------------------------------
+
+Error 0001:
+
+Reported by:
+  'Xl_ch16_LPF_int_v4/ch_16_LPF/ch_16_IIR_filter/Demux_16x/Reg9'
+
+Details:
+The period of the signal driving the enable of this block is
+inappropriate.  The period must be an integer multiple of the gcd
+of signals driving the following input ports:
+d : 2.56e-006
+enable period: 2e-008
+
+In the debugging of this problem, you may find it helpful to have
+the sample rates displayed on the Simulink diagram. This will
+happen if you open the System Generator block's dialog box, set
+its "Block Icon Display" control to "Sample Rates", and then
+update the diagram.
+
+
+Error occurred during "Rate and Type Error Checking".
+
+--------------------------------------------------------------------------------
+
+Error 0001:
+
+Reported by:
+  'Xl_ch16_LPF_int_v4/ch_16_LPF/ch_16_IIR_filter/Demux_16x/Reg9'
+
+Details:
+The period of the signal driving the reset of this block is
+inappropriate.  The period must be an integer multiple of the gcd
+of signals driving the following input ports:
+d : 2.56e-006
+reset period: 2e-008
+
+In the debugging of this problem, you may find it helpful to have
+the sample rates displayed on the Simulink diagram. This will
+happen if you open the System Generator block's dialog box, set
+its "Block Icon Display" control to "Sample Rates", and then
+update the diagram.
+
+
+Error occurred during "Rate and Type Error Checking".
+
+--------------------------------------------------------------------------------

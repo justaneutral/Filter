@@ -1,0 +1,1 @@
+run -ifn xst_xl_ch16_lpf_int_v6.prj -ifmt mixed -ofn xl_ch16_lpf_int_v6_mcw.ngc -ofmt NGC -p xc6slx45t-3csg324 -ent xl_ch16_lpf_int_v6_mcw -keep_hierarchy NO -iobuf YES -bus_delimiter () -top xl_ch16_lpf_int_v6_mcw -hierarchy_separator / -report_timing_constraint_problems warning -register_balancing no -iob Auto -uc xl_ch16_lpf_int_v6_mcw.xcf -write_timing_constraints yes
